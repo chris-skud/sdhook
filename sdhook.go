@@ -223,33 +223,38 @@ func (sh *StackdriverHook) sendLogMessageViaAgent(entry *logrus.Entry, labels ma
 func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[string]string, httpReq *logging.HttpRequest) {
 	if sh.errorReportingServiceName != "" && isError(entry) {
 		errorEvent := sh.buildErrorReportingEvent(entry, labels, httpReq)
-		sh.errorService.Projects.Events.Report(sh.projectID, &errorEvent)
-	} else {
-		logName := sh.logName
-		if sh.errorReportingLogName != "" && isError(entry) {
-			logName = sh.errorReportingLogName
+		call := sh.errorService.Projects.Events.Report("projects/"+sh.projectID, &errorEvent)
+		_, err := call.Do()
+		if err != nil {
+			log.Printf("Error publishing error report: %s", err.Error())
 		}
-		_, _ = sh.service.Write(&logging.WriteLogEntriesRequest{
-			LogName:        logName,
-			Resource:       sh.resource,
-			Labels:         sh.labels,
-			PartialSuccess: sh.partialSuccess,
-			Entries: []*logging.LogEntry{
-				&logging.LogEntry{
-					Severity:    strings.ToUpper(entry.Level.String()),
-					Timestamp:   entry.Time.Format(time.RFC3339),
-					TextPayload: entry.Message,
-					Labels:      labels,
-					HttpRequest: httpReq,
-				},
-			},
-		}).Do()
 	}
+
+	// MDB: log error and not just send to reporting service, few other tweaks
+	logName := sh.logName
+	if sh.errorReportingLogName != "" && isError(entry) {
+		logName = sh.errorReportingLogName
+	}
+	_, _ = sh.service.Write(&logging.WriteLogEntriesRequest{
+		LogName:        logName,
+		Resource:       sh.resource,
+		Labels:         sh.labels,
+		PartialSuccess: sh.partialSuccess,
+		Entries: []*logging.LogEntry{
+			&logging.LogEntry{
+				Severity:    strings.ToUpper(entry.Level.String()),
+				Timestamp:   entry.Time.Format(time.RFC3339Nano),
+				TextPayload: entry.Message,
+				Labels:      labels,
+				HttpRequest: httpReq,
+			},
+		},
+	}).Do()
 }
 
 func (sh *StackdriverHook) buildErrorReportingEvent(entry *logrus.Entry, labels map[string]string, httpReq *logging.HttpRequest) errorReporting.ReportedErrorEvent {
 	errorEvent := errorReporting.ReportedErrorEvent{
-		EventTime: entry.Time.Format(time.RFC3339),
+		EventTime: entry.Time.Format(time.RFC3339Nano),
 		Message:   entry.Message,
 		ServiceContext: &errorReporting.ServiceContext{
 			Service: sh.errorReportingServiceName,
