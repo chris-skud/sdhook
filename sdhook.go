@@ -230,7 +230,6 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 		}
 	}
 
-	// MDB: log error and not just send to reporting service, few other tweaks
 	logName := sh.logName
 	if sh.errorReportingLogName != "" && isError(entry) {
 		logName = sh.errorReportingLogName
