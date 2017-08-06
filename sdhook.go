@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/facebookgo/stack"
 	"github.com/fluent/fluent-logger-golang/fluent"
+	"github.com/sirupsen/logrus"
 
 	errorReporting "google.golang.org/api/clouderrorreporting/v1beta1"
 	logging "google.golang.org/api/logging/v2beta1"
